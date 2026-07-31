@@ -34,6 +34,27 @@ function fetchHttps(url, options = {}, postData = null) {
   });
 }
 
+// Registrar o Menu Oficial de Comandos do Bot no Telegram
+async function registerTelegramCommands() {
+  const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/setMyCommands`;
+  const commands = [
+    { command: 'post', description: 'Gera um carrossel de luxo (Ex: /post Santorini)' },
+    { command: 'foco', description: 'Post com foco específico (Ex: /foco Toscana --foco "Gastronomia")' },
+    { command: 'ajuda', description: 'Exibe o menu de instruções do bot Éter Travel' }
+  ];
+  try {
+    const res = await fetchHttps(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    }, { commands });
+    if (res.data && res.data.ok) {
+      console.log("✅ Menu oficial de comandos registrado com sucesso no Telegram!");
+    }
+  } catch (e) {
+    console.error("⚠️ Aviso: Não foi possível registrar o menu de comandos no Telegram:", e.message);
+  }
+}
+
 // Enviar mensagem no Telegram com suporte a botões interativos (Inline Keyboard)
 async function sendTelegramMessage(chatId, text, inlineKeyboard = null) {
   const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
@@ -74,15 +95,20 @@ async function searchUnsplashPhotos(query) {
 }
 
 // Gerar Copy no Gemini API com fallback automático de modelos
-async function generateGeminiContent(destino) {
+async function generateGeminiContent(destino, focoEspecial = null) {
   const candidateModels = [
     'gemini-flash-latest',
     'gemini-2.0-flash-lite-001',
     'gemini-2.5-pro'
   ];
 
+  let promptDestino = destino;
+  if (focoEspecial) {
+    promptDestino += ` (Foco Específico: ${focoEspecial})`;
+  }
+
   const systemPrompt = `Você é o Copywriter Sênior e Diretor de Arte da Éter Travel (agência de turismo sob medida de alto padrão).
-Crie um carrossel educativo e de altíssimo luxo sobre o destino: "${destino}" no estilo editorial de revista (Vogue Travel / Condé Nast).
+Crie um carrossel educativo e de altíssimo luxo sobre o destino: "${promptDestino}" no estilo editorial de revista (Vogue Travel / Condé Nast).
 
 DIRETRIZES DE MARCA:
 - PROIBIDO usar palavras de turismo em massa: "incrível", "maravilhoso", "imperdível", "dica de ouro", "promoção", "pacote", "desconto", "barato".
@@ -278,14 +304,21 @@ async function renderSlides(postData, images) {
 }
 
 // Função de Processamento Completo de Post
-async function processPostRequest(chatId, destino) {
-  await sendTelegramMessage(chatId, `✨ *Recebido!* Iniciando curadoria para: *${destino}*\n\n🧠 Gerando narrativa de luxo via Gemini AI...\n🖼️ Buscando fotos HD no Unsplash...\n🎨 Renderizando slides em 4K Retina via Puppeteer...`);
+async function processPostRequest(chatId, destino, focoEspecial = null) {
+  let msgStatus = `✨ *Recebido!* Iniciando curadoria de luxo para: *${destino}*`;
+  if (focoEspecial) {
+    msgStatus += `\n🎯 *Foco:* _"${focoEspecial}"_`;
+  }
+  msgStatus += `\n\n🧠 Gerando narrativa de luxo via Gemini AI...\n🖼️ Buscando fotos HD no Unsplash...\n🎨 Renderizando slides em 4K Retina via Puppeteer...`;
+
+  await sendTelegramMessage(chatId, msgStatus);
 
   try {
-    const postData = await generateGeminiContent(destino);
+    const postData = await generateGeminiContent(destino, focoEspecial);
     console.log("✅ Conteúdo gerado:", postData.theme);
 
-    const photos = await searchUnsplashPhotos(postData.unsplash_keyword || destino);
+    const searchKeyword = postData.unsplash_keyword || destino;
+    const photos = await searchUnsplashPhotos(searchKeyword);
     console.log(`✅ ${photos.length} fotos obtidas do Unsplash.`);
 
     const renderedSlides = await renderSlides(postData, photos);
@@ -311,11 +344,39 @@ async function processPostRequest(chatId, destino) {
   }
 }
 
+// Mensagem de Ajuda do Bot
+async function sendHelpMessage(chatId) {
+  const helpText = `✈️ *Éter Travel Bot Engine — Guia de Comandos*
+
+Envie um comando no chat para iniciar a geração automática de posts carrossel em 4K Retina:
+
+📌 *Comandos Disponíveis:*
+• \`/post <destino>\` — Gera um carrossel de luxo completo
+  _Exemplo:_ \`/post Santorini, Grécia\`
+
+• \`/foco <destino> --foco "<pauta>"\` — Post focado em um tema específico
+  _Exemplo:_ \`/foco Toscana, Itália --foco "Gastronomia autoral e vinhedos"\`
+
+• \`/ajuda\` — Exibe este menu de ajuda e instruções
+
+💡 *Dica:* Você também pode simplesmente digitar o nome do destino direto no chat!`;
+
+  const inlineButtons = [
+    [
+      { text: "🏝️ Exemplo: Santorini", callback_data: `regen_Santorini,%20Gr%C3%A9cia` },
+      { text: "🍷 Exemplo: Toscana", callback_data: `regen_Toscana,%20It%C3%A1lia` }
+    ]
+  ];
+
+  await sendTelegramMessage(chatId, helpText, inlineButtons);
+}
+
 // Polling do Telegram Bot
 let lastUpdateId = 0;
 
 async function pollTelegram() {
-  console.log("🤖 Éter Travel Telegram Bot ativo com botões de Ação! Aguardando comandos (ex: /post Santorini, Grécia)...");
+  await registerTelegramCommands();
+  console.log("🤖 Éter Travel Telegram Bot ativo com Menu Oficial e Comandos! Aguardando mensagens...");
 
   while (true) {
     try {
@@ -332,7 +393,6 @@ async function pollTelegram() {
             const chatId = cb.message.chat.id;
             const data = cb.data;
 
-            // Notifica o Telegram para fechar o indicador de carregamento do botão
             const answerUrl = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`;
             await fetchHttps(answerUrl, {
               method: 'POST',
@@ -349,15 +409,36 @@ async function pollTelegram() {
             continue;
           }
 
-          // 2. Tratar Comandos de Texto (/post ...)
+          // 2. Tratar Comandos de Texto (/post, /foco, /ajuda, /start)
           const msg = update.message;
           if (!msg || !msg.text) continue;
 
           const text = msg.text.trim();
           const chatId = msg.chat.id;
 
-          if (text.startsWith('/post') || text.startsWith('/start') || text.length > 2) {
-            let destino = text.replace('/post', '').replace('/start', '').trim();
+          if (text.startsWith('/ajuda') || text.startsWith('/start') && text.trim() === '/start') {
+            await sendHelpMessage(chatId);
+            continue;
+          }
+
+          if (text.startsWith('/foco')) {
+            let content = text.replace('/foco', '').trim();
+            let destino = content;
+            let focoEspecial = null;
+
+            if (content.includes('--foco')) {
+              const parts = content.split('--foco');
+              destino = parts[0].trim();
+              focoEspecial = parts[1].replace(/"/g, '').trim();
+            }
+
+            if (!destino) destino = "Toscana, Itália";
+            await processPostRequest(chatId, destino, focoEspecial);
+            continue;
+          }
+
+          if (text.startsWith('/post') || text.length > 2) {
+            let destino = text.replace('/post', '').trim();
             if (!destino) destino = "Santorini, Grécia";
 
             await processPostRequest(chatId, destino);
