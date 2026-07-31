@@ -1,0 +1,15 @@
+{
+  "name": "eter-travel-post",
+  "version": "1.0.0",
+  "description": "Motor de Automação de Instagram da Éter Travel",
+  "main": "bot.js",
+  "scripts": {
+    "start": "node bot.js",
+    "test:render": "node renderer/render-slides.js",
+    "test:gemini": "node test_full.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "puppeteer": "^22.15.0"
+  }
+}

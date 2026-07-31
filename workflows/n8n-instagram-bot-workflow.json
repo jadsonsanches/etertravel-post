@@ -1,0 +1,87 @@
+{
+  "name": "Éter Travel - Instagram Telegram Bot Engine",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ]
+      },
+      "id": "node-telegram-trigger",
+      "name": "Telegram Command Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extrai o comando e o destino solicitado pelo fundador\nconst text = $input.first().json.message.text || '';\nconst cleanText = text.replace('/post', '').trim();\n\nreturn {\n  destination: cleanText || 'Santorini, Grécia',\n  requestedBy: $input.first().json.message.from.first_name || 'Fundador'\n};"
+      },
+      "id": "node-extract-params",
+      "name": "Extrair Destino",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "key",
+              "value": "={{ $env.GEMINI_API_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"contents\": [{\n    \"parts\": [{\n      \"text\": \"Crie um carrossel educativo de luxo em JSON estrito sobre: {{ $json.destination }}. Use a estrutura com theme, unsplash_keyword, caption e slides (array com slide_index, tag, title, body, highlight).\"\n    }]\n  }]\n}"
+      },
+      "id": "node-gemini-ai",
+      "name": "Google Gemini 1.5 Flash",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        700,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Telegram Command Trigger": {
+      "main": [
+        [
+          {
+            "node": "Extrair Destino",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extrair Destino": {
+      "main": [
+        [
+          {
+            "node": "Google Gemini 1.5 Flash",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

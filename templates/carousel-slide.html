@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Éter Travel Editorial Carousel</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400&family=Plus+Jakarta+Sans:wght@300;400;500&display=swap');
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      width: 1080px;
+      height: 1350px;
+      overflow: hidden;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background-color: #0A0F14;
+      color: #FFFFFF;
+      position: relative;
+    }
+
+    /* Imagem de Fundo Limpa, Clara e com Luz Natural (Vogue / Condé Nast Style) */
+    .bg-image {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 1080px;
+      height: 1350px;
+      object-fit: cover;
+      filter: brightness(0.98) contrast(1.02);
+      z-index: 1;
+    }
+
+    /* Degradê Suave de Luz Natural (Sem bloquear a foto) */
+    .overlay-gradient {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        180deg,
+        rgba(0, 0, 0, 0.25) 0%,
+        rgba(0, 0, 0, 0.0) 35%,
+        rgba(0, 0, 0, 0.0) 65%,
+        rgba(0, 0, 0, 0.35) 100%
+      );
+      z-index: 2;
+    }
+
+    /* Granulado Editorial Texturizado 15% (Film Grain) — Textura idêntica à referência */
+    .film-grain {
+      position: absolute;
+      inset: 0;
+      opacity: 0.16;
+      mix-blend-mode: overlay;
+      pointer-events: none;
+      z-index: 3;
+      background: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+    }
+
+    /* Container Principal */
+    .slide-container {
+      position: relative;
+      z-index: 5;
+      width: 1080px;
+      height: 1350px;
+      padding: 75px 80px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    /* Área de Conteúdo Flexível */
+    .content-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      padding-top: 30px;
+      padding-bottom: 30px;
+    }
+
+    /* -------------------------------------------------------------
+       VARIAÇÕES DINÂMICAS DE LAYOUT (Estética Magazine Grid)
+       ------------------------------------------------------------- */
+    /* Cover (Slide 1) */
+    .layout-cover .cover-title-block {
+      margin-top: 40px;
+      max-width: 900px;
+    }
+
+    .layout-cover .cover-footer-block {
+      margin-top: auto;
+      max-width: 820px;
+    }
+
+    .cover-main-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 76px;
+      line-height: 1.08;
+      font-weight: 400;
+      color: #FFFFFF;
+      letter-spacing: 0.5px;
+    }
+
+    .cover-subtitle {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 24px;
+      line-height: 1.55;
+      font-weight: 300;
+      color: #F1F5F9;
+    }
+
+    /* Card de Destino (Top Left) */
+    .layout-top-left {
+      align-items: flex-start;
+      justify-content: flex-start;
+      text-align: left;
+    }
+
+    /* Card de Destino (Top Center) */
+    .layout-top-center {
+      align-items: center;
+      justify-content: flex-start;
+      text-align: center;
+    }
+
+    /* Card de Destino (Bottom Left) */
+    .layout-bottom-left {
+      align-items: flex-start;
+      justify-content: flex-end;
+      text-align: left;
+    }
+
+    /* Card de Destino (Bottom Right) */
+    .layout-bottom-right {
+      align-items: flex-end;
+      justify-content: flex-end;
+      text-align: right;
+    }
+
+    /* Estilos Tipográficos de Revista (Inspirado em Vogue / Condé Nast) */
+    .destination-block {
+      max-width: 820px;
+    }
+
+    .place-name {
+      font-family: 'Playfair Display', serif;
+      font-size: 72px;
+      line-height: 1.06;
+      font-weight: 400;
+      color: #FFFFFF;
+      margin-bottom: 6px;
+      letter-spacing: 0.3px;
+    }
+
+    .place-location {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 23px;
+      font-weight: 300;
+      letter-spacing: 0.5px;
+      color: #F1F5F9;
+      margin-bottom: 22px;
+    }
+
+    .editorial-body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 22px;
+      line-height: 1.6;
+      font-weight: 300;
+      color: #F8FAFC;
+    }
+
+    /* Footer Minimalista */
+    .footer {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      width: 100%;
+      padding-top: 20px;
+    }
+
+    .swipe-hint {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 13px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #FFFFFF;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 400;
+      opacity: 0.9;
+    }
+  </style>
+</head>
+<body>
+  <img class="bg-image" src="{{UNSPLASH_IMAGE_URL}}" alt="Éter Travel" />
+  
+  <div class="overlay-gradient"></div>
+  <div class="film-grain"></div>
+
+  <div class="slide-container">
+    <!-- Conteúdo com Layout Dinâmico -->
+    <div class="content-area {{LAYOUT_CLASS}}">
+      {{SLIDE_CONTENT_HTML}}
+    </div>
+
+    <div class="footer">
+      <div class="swipe-hint">Deslize para explorar &rarr;</div>
+    </div>
+  </div>
+</body>
+</html>

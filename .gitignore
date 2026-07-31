@@ -1,0 +1,14 @@
+# Dependências
+node_modules/
+
+# Variáveis de ambiente secretas
+.env
+.env.local
+
+# Imagens de saída de teste
+output_slide_*.jpg
+*.log
+
+# Arquivos de sistema
+.DS_Store
+Thumbs.db
