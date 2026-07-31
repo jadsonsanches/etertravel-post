@@ -34,21 +34,21 @@ function fetchHttps(url, options = {}, postData = null) {
   });
 }
 
-// Enviar mensagem no Telegram
-async function sendTelegramMessage(chatId, text) {
+// Enviar mensagem no Telegram com suporte a botões interativos (Inline Keyboard)
+async function sendTelegramMessage(chatId, text, inlineKeyboard = null) {
   const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
+  const payload = { chat_id: chatId, text, parse_mode: 'Markdown' };
+  if (inlineKeyboard) {
+    payload.reply_markup = { inline_keyboard: inlineKeyboard };
+  }
   await fetchHttps(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' }
-  }, { chat_id: chatId, text, parse_mode: 'Markdown' });
+  }, payload);
 }
 
 // Enviar fotos no Telegram sem erro de tamanho de legenda (Garante a foto 1/5)
-async function sendTelegramPhotoAlbum(chatId, photoPaths, caption) {
-  // 1. Envia a legenda completa em mensagem de texto dedicada
-  await sendTelegramMessage(chatId, caption);
-
-  // 2. Envia todas as fotos do carrossel (Slide 1 ao 5) com identificador curto
+async function sendTelegramPhotoAlbum(chatId, photoPaths) {
   for (let i = 0; i < photoPaths.length; i++) {
     const photoPath = photoPaths[i];
     const curlCmd = `curl -s -F "chat_id=${chatId}" -F "photo=@${photoPath}" -F "caption=Slide ${i + 1}/${photoPaths.length}" "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto"`;
@@ -277,11 +277,45 @@ async function renderSlides(postData, images) {
   return outputFiles;
 }
 
+// Função de Processamento Completo de Post
+async function processPostRequest(chatId, destino) {
+  await sendTelegramMessage(chatId, `✨ *Recebido!* Iniciando curadoria para: *${destino}*\n\n🧠 Gerando narrativa de luxo via Gemini AI...\n🖼️ Buscando fotos HD no Unsplash...\n🎨 Renderizando slides em 4K Retina via Puppeteer...`);
+
+  try {
+    const postData = await generateGeminiContent(destino);
+    console.log("✅ Conteúdo gerado:", postData.theme);
+
+    const photos = await searchUnsplashPhotos(postData.unsplash_keyword || destino);
+    console.log(`✅ ${photos.length} fotos obtidas do Unsplash.`);
+
+    const renderedSlides = await renderSlides(postData, photos);
+    console.log(`✅ ${renderedSlides.length} slides renderizados em 1080x1350.`);
+
+    // 1. Envia o álbum com as fotos renderizadas
+    await sendTelegramPhotoAlbum(chatId, renderedSlides);
+
+    // 2. Envia a mensagem com a legenda e os BOTÕES INTERATIVOS
+    const captionText = `📌 *${postData.theme}*\n\n${postData.caption}`;
+    const inlineButtons = [
+      [
+        { text: "✅ Aprovar e Publicar", callback_data: `publish_${encodeURIComponent(destino)}` },
+        { text: "🔄 Refazer Post", callback_data: `regen_${encodeURIComponent(destino)}` }
+      ]
+    ];
+
+    await sendTelegramMessage(chatId, captionText, inlineButtons);
+    console.log("✅ Prévia com botões interativos enviada com sucesso para o Telegram!");
+  } catch (err) {
+    console.error("Erro no processamento:", err);
+    await sendTelegramMessage(chatId, `❌ *Erro ao processar post:* ${err.message}`);
+  }
+}
+
 // Polling do Telegram Bot
 let lastUpdateId = 0;
 
 async function pollTelegram() {
-  console.log("🤖 Éter Travel Telegram Bot ativo! Aguardando comandos (ex: /post Santorini, Grécia)...");
+  console.log("🤖 Éter Travel Telegram Bot ativo com botões de Ação! Aguardando comandos (ex: /post Santorini, Grécia)...");
 
   while (true) {
     try {
@@ -291,6 +325,31 @@ async function pollTelegram() {
       if (res.data && res.data.ok && res.data.result.length > 0) {
         for (const update of res.data.result) {
           lastUpdateId = update.update_id;
+
+          // 1. Tratar Cliques nos Botões Interativos (Callback Queries)
+          if (update.callback_query) {
+            const cb = update.callback_query;
+            const chatId = cb.message.chat.id;
+            const data = cb.data;
+
+            // Notifica o Telegram para fechar o indicador de carregamento do botão
+            const answerUrl = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`;
+            await fetchHttps(answerUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' }
+            }, { callback_query_id: cb.id });
+
+            if (data.startsWith('publish_')) {
+              const destino = decodeURIComponent(data.replace('publish_', ''));
+              await sendTelegramMessage(chatId, `🎉 *Post Aprovado com Sucesso!*\n\n🚀 Destino: *${destino}*\n📲 *Status:* Próximo passo: adicionar Meta Token no .env para publicar automaticamente no perfil do Instagram!`);
+            } else if (data.startsWith('regen_')) {
+              const destino = decodeURIComponent(data.replace('regen_', ''));
+              await processPostRequest(chatId, destino);
+            }
+            continue;
+          }
+
+          // 2. Tratar Comandos de Texto (/post ...)
           const msg = update.message;
           if (!msg || !msg.text) continue;
 
@@ -301,26 +360,7 @@ async function pollTelegram() {
             let destino = text.replace('/post', '').replace('/start', '').trim();
             if (!destino) destino = "Santorini, Grécia";
 
-            await sendTelegramMessage(chatId, `✨ *Recebido!* Iniciando curadoria para: *${destino}*`);
-
-            try {
-              const postData = await generateGeminiContent(destino);
-              console.log("✅ Conteúdo gerado:", postData.theme);
-
-              const photos = await searchUnsplashPhotos(postData.unsplash_keyword || destino);
-              console.log(`✅ ${photos.length} fotos obtidas do Unsplash.`);
-
-              const renderedSlides = await renderSlides(postData, photos);
-              console.log(`✅ ${renderedSlides.length} slides renderizados em 1080x1350.`);
-
-              const caption = `📌 *${postData.theme}*\n\n${postData.caption}\n\n📲 *Status:* Próximo passo: adicionar Meta Token no .env para publicar automaticamente!`;
-
-              await sendTelegramPhotoAlbum(chatId, renderedSlides, caption);
-              console.log("✅ Prévia enviada com sucesso para o Telegram!");
-            } catch (err) {
-              console.error("Erro no processamento:", err);
-              await sendTelegramMessage(chatId, `❌ *Erro ao processar post:* ${err.message}`);
-            }
+            await processPostRequest(chatId, destino);
           }
         }
       }
