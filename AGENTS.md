@@ -38,8 +38,13 @@ Este documento registra a estrutura, especificações e definições do time de 
   - Diretrizes do *Brand System Prompt* para o modelo de Inteligência Artificial.
   - Padrões visuais de tipografia serifada (*Cormorant Garamond*), paleta de cores terrosas/champagne e degradês translúcidos de vidro.
   - Estratégia de chamadas para ação (CTA) para atendimento consultivo no WhatsApp.
+  - Auditoria Visual Automática (Visual QA & Compliance) dos slides renderizados via Gemini Multimodal.
 
 ---
 
 ## 🛠️ Como Funciona neste Repositório
+> ⚠️ **REGRA MANDATÓRIA PARA TODOS OS AGENTES:**
+> Antes de criar, sugerir ou renderizar qualquer post, carrossel ou copy de mídia social, todos os agentes (`main`, `tech-lead`, `marketing-agent`) **DEVEM OBRIGATORIAMENTE LER E SEGUIR** as diretrizes visuais e de linguagem contidas em [`STYLE_GUIDE.md`](file:///C:/jadson/eter-travel-post/STYLE_GUIDE.md).
+
 Ao abrir a pasta `C:\jadson\eter-travel-post` no Google Antigravity, o assistente lerá este arquivo `AGENTS.md` automaticamente e saberá acionar e delegar tarefas para o `tech-lead` ou `marketing-agent` conforme a necessidade de código ou estratégia de conteúdo.
+

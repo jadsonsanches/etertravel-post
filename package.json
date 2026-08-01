@@ -5,6 +5,7 @@
   "main": "bot.js",
   "scripts": {
     "start": "node bot.js",
+    "dev": "node bot.js",
     "test:render": "node renderer/render-slides.js",
     "test:gemini": "node test_full.js"
   },
